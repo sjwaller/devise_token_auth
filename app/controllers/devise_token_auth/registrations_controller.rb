@@ -59,7 +59,7 @@ module DeviseTokenAuth
           }, status: 403
         end
 
-      rescue Moped::Errors::OperationFailure => e
+      rescue Mongo::Error::OperationFailure => e
         description = e.details['err']
         if [11000, 11001].include?(e.details['code'])
           clean_up_passwords @resource
