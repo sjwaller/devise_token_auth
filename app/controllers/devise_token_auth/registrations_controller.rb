@@ -58,15 +58,20 @@ module DeviseTokenAuth
             errors: @resource.errors.to_hash.merge(full_messages: @resource.errors.full_messages)
           }, status: 403
         end
-      rescue ActiveRecord::RecordNotUnique
-        clean_up_passwords @resource
-        render json: {
-          status: 'error',
-          data:   @resource,
-          errors: ["An account already exists for #{@resource.email}"]
-        }, status: 403
+
+      rescue Moped::Errors::OperationFailure => e
+        description = e.details['err']
+        if [11000, 11001].include?(e.details['code'])
+          clean_up_passwords @resource
+          render json: {
+            status: 'error',
+            data:   @resource,
+            errors: ["An account already exists for #{@resource.email}"]
+          }, status: 403
+        else
+          raise
+        end
       end
-    end
 
     def update
       if @resource
