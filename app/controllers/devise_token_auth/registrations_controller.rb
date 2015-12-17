@@ -72,7 +72,8 @@ module DeviseTokenAuth
           raise
         end
       end
-
+    end
+    
     def update
       if @resource
         if @resource.update_attributes(account_update_params)
