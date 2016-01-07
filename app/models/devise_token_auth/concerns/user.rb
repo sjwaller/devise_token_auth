@@ -181,7 +181,12 @@ module DeviseTokenAuth::Concerns::User
     return build_auth_header(token, client_id)
   end
 
-
+  def token_validation_response
+    self.as_json(except: [
+      :tokens, :created_at, :updated_at
+    ])
+  end
+  
   protected
 
 
