@@ -184,7 +184,13 @@ module DeviseTokenAuth::Concerns::User
   def confirmed?
     self.devise_modules.exclude?(:confirmable) || super
   end
-
+  
+  def token_validation_response
+    self.as_json(except: [
+      :tokens, :created_at, :updated_at
+    ])
+  end
+  
   protected
 
   # NOTE: ensure that fragment comes AFTER querystring for proper $location
