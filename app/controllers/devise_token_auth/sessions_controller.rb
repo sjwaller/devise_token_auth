@@ -26,11 +26,9 @@ module DeviseTokenAuth
 
         sign_in(:user, @resource, store: false, bypass: false)
 
-        render json: {
-          data: @resource.as_json(except: [
-            :tokens, :created_at, :updated_at
-          ])
-        }
+        yield if block_given?
+
+        render_create_success
 
       elsif @resource and not @resource.confirmed?
         render json: {
@@ -76,6 +74,14 @@ module DeviseTokenAuth
 
     def resource_params
       params.permit(devise_parameter_sanitizer.for(:sign_in))
+    end
+    
+    protected
+    
+    def render_create_success
+      render json: {
+        data: @resource.token_validation_response
+      }
     end
   end
 end
