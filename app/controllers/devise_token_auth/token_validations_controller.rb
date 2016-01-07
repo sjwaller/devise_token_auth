@@ -5,7 +5,6 @@ module DeviseTokenAuth
 
     def validate_token
       # @resource will have been set by set_user_token concern
-      # @resource will have been set by set_user_token concern
       if @resource
         render json: {
           success: true,
