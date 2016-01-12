@@ -52,13 +52,13 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     # cannot save object if model has invalid params
     return unless @resource and @resource.valid? and @client_id
 
-    if DeviseTokenAuth.threadsafe
+    #if DeviseTokenAuth.threadsafe
       # Lock the user record during any auth_header updates to ensure
       # we don't have write contention from multiple threads
-      @resource.with_lock { do_auth_header_update }
-    else
+      #@resource.with_lock { do_auth_header_update }
+    #else
       do_auth_header_update
-    end
+    #end
 
   end
 
