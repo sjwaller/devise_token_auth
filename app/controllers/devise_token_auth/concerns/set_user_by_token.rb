@@ -35,7 +35,7 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     @client_id ||= 'default'
 
     # mitigate timing attacks by finding by uid instead of auth token
-    user = uid && rc.find_by_uid(uid)
+    user = uid && rc.where(uid: uid).first
 
     if user && user.valid_token?(@token, @client_id)
       sign_in(:user, user, store: false, bypass: true)
@@ -52,36 +52,13 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     # cannot save object if model has invalid params
     return unless @resource and @resource.valid? and @client_id
 
-    # Lock the user record during any auth_header updates to ensure
-    # we don't have write contention from multiple threads
-    @resource.with_lock do
-
-      # determine batch request status after request processing, in case
-      # another processes has updated it during that processing
-      @is_batch_request = is_batch_request?(@resource, @client_id)
-
-      auth_header = {}
-
-      if not DeviseTokenAuth.change_headers_on_each_request
-        auth_header = @resource.build_auth_header(@token, @client_id)
-
-        # update the response header
-        response.headers.merge!(auth_header)
-
-      # extend expiration of batch buffer to account for the duration of
-      # this request
-      elsif @is_batch_request
-        auth_header = @resource.extend_batch_buffer(@token, @client_id)
-
-      # update Authorization response header with new token
-      else
-        auth_header = @resource.create_new_auth_token(@client_id)
-
-        # update the response header
-        response.headers.merge!(auth_header)
-      end
-
-    end # end lock
+    if DeviseTokenAuth.threadsafe
+      # Lock the user record during any auth_header updates to ensure
+      # we don't have write contention from multiple threads
+      @resource.with_lock { do_auth_header_update }
+    else
+      do_auth_header_update
+    end
 
   end
 
@@ -98,10 +75,36 @@ module DeviseTokenAuth::Concerns::SetUserByToken
 
   private
 
+  def do_auth_header_update
+    # determine batch request status after request processing, in case
+    # another processes has updated it during that processing
+    @is_batch_request = is_batch_request?(@resource, @client_id)
+
+    auth_header = {}
+
+    if not DeviseTokenAuth.change_headers_on_each_request
+      auth_header = @resource.build_auth_header(@token, @client_id)
+
+      # update the response header
+      response.headers.merge!(auth_header)
+
+    # extend expiration of batch buffer to account for the duration of
+    # this request
+    elsif @is_batch_request
+      auth_header = @resource.extend_batch_buffer(@token, @client_id)
+
+    # update Authorization response header with new token
+    else
+      auth_header = @resource.create_new_auth_token(@client_id)
+
+      # update the response header
+      response.headers.merge!(auth_header)
+    end
+  end
 
   def is_batch_request?(user, client_id)
     user.tokens[client_id] and
     user.tokens[client_id]['updated_at'] and
-    Time.parse(user.tokens[client_id]['updated_at']) > @request_started_at - DeviseTokenAuth.batch_request_buffer_throttle
+    user.tokens[client_id]['updated_at'] > @request_started_at - DeviseTokenAuth.batch_request_buffer_throttle
   end
 end
